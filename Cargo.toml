@@ -1,0 +1,36 @@
+[package]
+name = "cssengine"
+authors = ["Sergio Ribera <sergioribera@rustlang-es.org>"]
+description = "CSS Engine to parse and get declarations by class and query"
+version = "0.1.0"
+edition = "2021"
+keywords = ["css", "css-compiler", "styling", "web", "engine"]
+categories = ["web-programming", "development-tools"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/SergioRibera/egui_css"
+homepage = "https://github.com/SergioRibera/egui_css"
+readme = "README.md"
+exclude = ["examples", "benches"]
+
+[features]
+default = ["grid", "flexbox"]
+serde = ["dep:serde", "smallvec/serde", "taffy/serde", "csscolorparser/serde"]
+grid = ["taffy/grid"]
+flexbox = ["taffy/flexbox"]
+tailwind_colors = []
+
+[[bench]]
+name = "parser"
+harness = false
+
+[dependencies]
+csscolorparser = { version = "0.7.0", default-features = false }
+serde = { version = "1", features = ["derive"], optional = true }
+smallvec = { version = "1.13", features = ["const_new"] }
+taffy = { version = "0.6", default-features = false, features = [
+    "taffy_tree",
+    "block_layout",
+] }
+
+[dev-dependencies]
+divan = "0.1"
