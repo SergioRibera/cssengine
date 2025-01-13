@@ -7,8 +7,8 @@ edition = "2021"
 keywords = ["css", "css-compiler", "styling", "web", "engine"]
 categories = ["web-programming", "development-tools"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/SergioRibera/egui_css"
-homepage = "https://github.com/SergioRibera/egui_css"
+repository = "https://github.com/SergioRibera/cssengine"
+homepage = "https://github.com/SergioRibera/cssengine"
 readme = "README.md"
 exclude = ["examples", "benches"]
 
