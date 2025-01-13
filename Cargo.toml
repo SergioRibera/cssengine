@@ -2,7 +2,7 @@
 name = "cssengine"
 authors = ["Sergio Ribera <sergioribera@rustlang-es.org>"]
 description = "CSS Engine to parse and get declarations by class and query"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 keywords = ["css", "css-compiler", "styling", "web", "engine"]
 categories = ["web-programming", "development-tools"]
