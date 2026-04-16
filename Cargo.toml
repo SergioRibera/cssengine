@@ -24,10 +24,10 @@ name = "parser"
 harness = false
 
 [dependencies]
-csscolorparser = { version = "0.7.0", default-features = false }
+csscolorparser = { version = "0.8", default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
-smallvec = { version = "1.13", features = ["const_new"] }
-taffy = { version = "0.6", default-features = false, features = [
+smallvec = { version = "1.15", features = ["const_new"] }
+taffy = { version = "0.10", default-features = false, features = [
     "taffy_tree",
     "block_layout",
 ] }

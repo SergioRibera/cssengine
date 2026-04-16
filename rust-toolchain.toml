@@ -1,4 +1,4 @@
 [toolchain]
-channel = "stable-2024-10-17"
+channel = "stable"
 profile = "minimal"
-components = ["rust-src"]
+components = ["rust-src", "rust-std"]

@@ -31,14 +31,14 @@ use lexer::Token;
 /// let rules = cssengine::css_to_rules(css).expect("Failed to parse CSS");
 /// ```
 #[must_use]
-pub fn css_to_rules(input: &str) -> Result<Vec<Rule<'_>>, Vec<SyntaxError>> {
+pub fn css_to_rules(input: &str) -> Result<Vec<Rule<'_>>, Vec<SyntaxError<'_>>> {
     let tokens = Lexer::new(input).tokens();
     analyze_tokens(&tokens, input)?;
     let rules = Parser::new(tokens).parse();
     Ok(replace_vars(rules))
 }
 
-pub fn analyze(input: &str) -> Result<(), Vec<SyntaxError>> {
+pub fn analyze(input: &str) -> Result<(), Vec<SyntaxError<'_>>> {
     let tokens = Lexer::new(input).tokens();
     let res = parser::analyze_tokens(&tokens, input);
 

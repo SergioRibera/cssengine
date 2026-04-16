@@ -41,11 +41,11 @@ fn main() {
         for (_class, styles) in stylesheet.get_styles(class) {
             for style in styles {
                 if let Declaration::BackgroundColor(c) = &style {
-                    println!("\tBackgroundColor({})", c.to_hex_string());
+                    println!("\tBackgroundColor({})", c.to_css_hex());
                     continue;
                 }
                 if let Declaration::Color(c) = &style {
-                    println!("\tColor({})", c.to_hex_string());
+                    println!("\tColor({})", c.to_css_hex());
                     continue;
                 }
                 println!("\t{style:?}");
