@@ -12,7 +12,7 @@ use lexer::Token;
 
 pub use analyzer::{analyze_tokens, Span, SyntaxError};
 pub use at_rules::{
-    ColorScheme, FontFace, FontSource, Keyframes, KeyframeStop,
+    ColorScheme, FontFace, FontSource, ImportRule, Keyframes, KeyframeStop,
     MediaContext, MediaFeature, MediaQuery, MediaRule, Orientation,
 };
 pub use lexer::Lexer;

@@ -6,8 +6,8 @@ use smallvec::SmallVec;
 
 use crate::declaration::Declaration;
 use crate::parser::at_rules::{
-    FontFace, Keyframes, KeyframeStop, MediaContext, MediaRule,
-    parse_font_face, parse_media_query,
+    FontFace, ImportRule, Keyframes, KeyframeStop, MediaContext, MediaRule,
+    parse_font_face, parse_import_rule, parse_media_query,
 };
 use crate::parser::lexer::Token;
 use crate::parser::{Parser, replace_vars};
@@ -34,6 +34,8 @@ pub struct StyleSheet {
     media_rules: Vec<MediaRule>,
     keyframes: HashMap<String, Keyframes>,
     font_faces: Vec<FontFace>,
+    /// Unresolved `@import` rules, in source order.
+    import_rules: Vec<ImportRule>,
     #[allow(dead_code)]
     tmp_generated: Vec<Declaration>,
 }
@@ -45,6 +47,7 @@ impl StyleSheet {
             media_rules: Vec::new(),
             keyframes: HashMap::new(),
             font_faces: Vec::new(),
+            import_rules: Vec::new(),
             tmp_generated: Vec::new(),
         }
     }
@@ -65,6 +68,7 @@ impl StyleSheet {
         let mut media_rules_list: Vec<MediaRule> = Vec::new();
         let mut keyframes_map: HashMap<String, Keyframes> = HashMap::new();
         let mut font_faces_list: Vec<FontFace> = Vec::new();
+        let mut import_rules_list: Vec<ImportRule> = Vec::new();
         let mut top_tokens: Vec<Token<'_>> = Vec::with_capacity(tokens.len());
 
         // Pass 1: walk through all tokens, routing at-rule blocks to parsers
@@ -109,8 +113,14 @@ impl StyleSheet {
                             &mut font_faces_list,
                         );
                     }
-                    // Statement at-rule (e.g. @charset "utf-8";) — skip until semicolon
+                    // Statement at-rule (no block): @import, @charset, @namespace, …
                     else {
+                        if keyword == "import" {
+                            if let Some(ir) = parse_import_rule(prelude) {
+                                import_rules_list.push(ir);
+                            }
+                        }
+                        // Skip to the terminating semicolon (already peeked past by scan_at_rule)
                         while i < n && !matches!(tokens[i], Token::Semicolon { .. } | Token::EOF) {
                             i += 1;
                         }
@@ -152,6 +162,7 @@ impl StyleSheet {
             media_rules: media_rules_list,
             keyframes: keyframes_map,
             font_faces: font_faces_list,
+            import_rules: import_rules_list,
             tmp_generated: Vec::new(),
         }
     }
@@ -172,6 +183,13 @@ impl StyleSheet {
         &self.font_faces
     }
 
+    /// Unresolved `@import` rules, in source order.
+    ///
+    /// Use `resolve_imports` to load their content and merge it into this stylesheet.
+    pub fn import_rules(&self) -> &[ImportRule] {
+        &self.import_rules
+    }
+
     // ---------------------------------------------------------------------------
     // Mutation and composition
     // ---------------------------------------------------------------------------
@@ -181,6 +199,9 @@ impl StyleSheet {
     /// Rules from `other` are appended after the existing rules, preserving cascade
     /// ordering (rules from `other` win on equal specificity because they have higher
     /// source indices).
+    ///
+    /// Unresolved `@import` rules from `other` are also transferred so that a
+    /// subsequent `resolve_imports` call handles them.
     pub fn merge(&mut self, other: StyleSheet) {
         let base = self.rules.len();
         for (sel, src_idx, decls) in other.rules {
@@ -191,6 +212,75 @@ impl StyleSheet {
             self.keyframes.insert(name, kf);
         }
         self.font_faces.extend(other.font_faces);
+        self.import_rules.extend(other.import_rules);
+    }
+
+    /// Resolve `@import` rules by loading their content with `loader`.
+    ///
+    /// `loader` receives the URL string exactly as written in the stylesheet and
+    /// returns `Some(css_string)` if it can supply the content, or `None` to leave
+    /// the import unresolved (it stays in `import_rules()`).
+    ///
+    /// Rules loaded from an unconditional import are merged directly.  Rules loaded
+    /// from a conditional import (e.g. `@import "mobile.css" (max-width: 768px)`) are
+    /// wrapped in a synthetic `@media` rule so they are only applied via
+    /// `get_styles_with_media`.
+    ///
+    /// **Nested imports** (imports inside imported files) are also resolved
+    /// automatically using the same loader.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut files: HashMap<&str, &str> = HashMap::new();
+    /// files.insert("base.css", ".root { color: red; }");
+    ///
+    /// let mut ss = cssengine::StyleSheet::from_css(r#"@import "base.css"; .a { color: blue; }"#);
+    /// ss.resolve_imports(|url| files.get(url).map(|s| s.to_string()));
+    ///
+    /// // .root is now available
+    /// assert!(!ss.get_styles(".root").is_empty());
+    /// ```
+    pub fn resolve_imports<F>(&mut self, loader: F)
+    where
+        F: Fn(&str) -> Option<String> + Copy,
+    {
+        let imports = std::mem::take(&mut self.import_rules);
+        let mut unresolved = Vec::new();
+
+        for import_rule in imports {
+            let Some(css) = loader(&import_rule.url) else {
+                unresolved.push(import_rule);
+                continue;
+            };
+
+            let mut sub = StyleSheet::from_css(&css);
+            // Recursively resolve nested imports in the sub-stylesheet
+            sub.resolve_imports(loader);
+
+            match import_rule.media {
+                None => {
+                    // Unconditional import: merge everything directly
+                    self.merge(sub);
+                }
+                Some(query) => {
+                    // Conditional import: top-level rules become a media rule;
+                    // keyframes/font-faces are unconditional per the CSS spec.
+                    if !sub.rules.is_empty() {
+                        self.media_rules.push(MediaRule { query: query.clone(), rules: sub.rules });
+                    }
+                    // Sub-stylesheet's own media rules carry their own conditions
+                    self.media_rules.extend(sub.media_rules);
+                    for (name, kf) in sub.keyframes {
+                        self.keyframes.entry(name).or_insert(kf);
+                    }
+                    self.font_faces.extend(sub.font_faces);
+                }
+            }
+        }
+
+        self.import_rules = unresolved;
     }
 
     /// Parse `input` as CSS and add the resulting rules to this stylesheet.

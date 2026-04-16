@@ -171,6 +171,70 @@ pub struct FontFace {
 }
 
 // ---------------------------------------------------------------------------
+// ImportRule
+// ---------------------------------------------------------------------------
+
+/// A parsed `@import` rule.
+///
+/// ```css
+/// @import "base.css";
+/// @import url("mobile.css") (max-width: 768px);
+/// @import "print.css" print;
+/// ```
+///
+/// The library does not fetch URLs — use `StyleSheet::resolve_imports` to
+/// supply content via a loader callback.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+pub struct ImportRule {
+    /// The URL or path exactly as written in the stylesheet.
+    pub url: String,
+    /// Optional media condition. When `None` the import is unconditional.
+    pub media: Option<MediaQuery>,
+}
+
+/// Parse an `@import` prelude (the text between `@import` and `;`).
+///
+/// Returns `None` if the prelude is not a valid `@import` declaration.
+pub fn parse_import_rule(prelude: &str) -> Option<ImportRule> {
+    let (url, rest) = extract_import_url(prelude.trim())?;
+    let media = if rest.trim().is_empty() {
+        None
+    } else {
+        Some(parse_media_query(rest.trim()))
+    };
+    Some(ImportRule { url, media })
+}
+
+/// Extract the URL string and the remaining text (media condition) from an
+/// `@import` prelude.
+fn extract_import_url(s: &str) -> Option<(String, &str)> {
+    if let Some(after) = s.strip_prefix("url(") {
+        // url( "..." ) or url( '...' ) or url( bare )
+        let close = after.find(')')?;
+        let url = after[..close]
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'')
+            .to_owned();
+        let rest = after[close + 1..].trim_start();
+        Some((url, rest))
+    } else if let Some(inner) = s.strip_prefix('"') {
+        let end = inner.find('"')?;
+        let url = inner[..end].to_owned();
+        let rest = inner[end + 1..].trim_start();
+        Some((url, rest))
+    } else if let Some(inner) = s.strip_prefix('\'') {
+        let end = inner.find('\'')?;
+        let url = inner[..end].to_owned();
+        let rest = inner[end + 1..].trim_start();
+        Some((url, rest))
+    } else {
+        None
+    }
+}
+
+// ---------------------------------------------------------------------------
 // MediaQuery parser
 // ---------------------------------------------------------------------------
 

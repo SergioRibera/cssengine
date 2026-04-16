@@ -9,7 +9,7 @@ pub use animation::*;
 pub use declaration::Declaration;
 pub use error::ParseError;
 pub use parser::{
-    ColorScheme, FontFace, FontSource, Keyframes, KeyframeStop,
+    ColorScheme, FontFace, FontSource, ImportRule, Keyframes, KeyframeStop,
     MediaContext, MediaFeature, MediaQuery, MediaRule, Orientation,
     PseudoClass, Span, SyntaxError,
 };
