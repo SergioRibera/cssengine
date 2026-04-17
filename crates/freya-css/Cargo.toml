@@ -6,15 +6,13 @@ description = "CSS styling support for Freya UI framework, powered by cssengine.
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SergioRibera/cssengine"
 homepage = "https://github.com/SergioRibera/cssengine"
-keywords = ["css", "freya", "gui", "styling", "dioxus"]
+keywords = ["css", "freya", "gui", "styling"]
 categories = ["gui"]
 
 [dependencies]
 cssengine = { path = "../..", default-features = false }
 freya-core = "0.4.0-rc.18"
 torin = "0.4.0-rc.18"
-dioxus = "0.6"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify = "6"
-tokio = { version = "1", features = ["fs", "time", "sync"] }

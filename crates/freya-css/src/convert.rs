@@ -1,16 +1,16 @@
-use csscolorparser::Color as CssColor;
-use cssengine::{BorderDef, BoxShadow, PxPct, PxPctAuto, TextAlign as CssTextAlign, TextStyle, Weight};
+use cssengine::{
+    BorderDef, BoxShadow, Color as CssColor, PxPct, PxPctAuto, TextAlign as CssTextAlign,
+    TextStyle, Weight,
+};
 use freya_core::prelude::{
     Border, Color, CornerRadius, FontSlant, FontWeight, Shadow, ShadowPosition, TextAlign,
 };
-use torin::gaps::Gaps;
+use torin::{gaps::Gaps, size::Size};
 
 // ---------------------------------------------------------------------------
 // Color
 // ---------------------------------------------------------------------------
 
-/// Convert a `csscolorparser::Color` (f64 channels 0.0..=1.0) to freya's
-/// packed-ARGB `Color`.
 pub fn css_color(c: &CssColor) -> Color {
     Color::from_argb(
         (c.a * 255.0) as u8,
@@ -21,37 +21,36 @@ pub fn css_color(c: &CssColor) -> Color {
 }
 
 // ---------------------------------------------------------------------------
-// Lengths
+// Lengths — raw px extraction
 // ---------------------------------------------------------------------------
 
-/// Resolve a `PxPct` to pixels (percentage / relative units fall back to 0).
 pub fn to_px(v: &PxPct) -> f32 {
     v.to_px_lossy()
 }
 
-/// Resolve a `PxPctAuto` to pixels (`Auto` → 0).
 pub fn to_px_auto(v: &PxPctAuto) -> f32 {
     v.to_px_lossy()
 }
 
-/// Convert `PxPct` to the string form that Freya's layout engine accepts:
-/// `"n"` for absolute pixels, `"n%"` for percentages.
-pub fn pxpct_to_size(v: &PxPct) -> String {
+// ---------------------------------------------------------------------------
+// Lengths — torin Size
+// ---------------------------------------------------------------------------
+
+pub fn pxpct_to_size(v: &PxPct) -> Size {
     match v {
-        PxPct::Px(n) => format!("{n}"),
-        PxPct::Pct(n) => format!("{n}%"),
-        other => format!("{}", other.to_px_lossy()),
+        PxPct::Px(n) => Size::px(*n),
+        PxPct::Pct(n) => Size::percent(*n),
+        other => Size::px(other.to_px_lossy()),
     }
 }
 
-/// Convert `PxPctAuto` to the string form that Freya's layout engine accepts.
-pub fn pxpctauto_to_size(v: &PxPctAuto) -> String {
+pub fn pxpctauto_to_size(v: &PxPctAuto) -> Size {
     match v {
-        PxPctAuto::Px(n) => format!("{n}"),
-        PxPctAuto::Pct(n) => format!("{n}%"),
-        PxPctAuto::Auto => "auto".to_string(),
-        PxPctAuto::Zero => "0".to_string(),
-        other => format!("{}", other.to_px_lossy()),
+        PxPctAuto::Px(n) => Size::px(*n),
+        PxPctAuto::Pct(n) => Size::percent(*n),
+        PxPctAuto::Auto => Size::auto(),
+        PxPctAuto::Zero => Size::px(0.0),
+        other => Size::px(other.to_px_lossy()),
     }
 }
 
@@ -59,7 +58,6 @@ pub fn pxpctauto_to_size(v: &PxPctAuto) -> String {
 // Gaps
 // ---------------------------------------------------------------------------
 
-/// Build a uniform `Gaps` value from a single px length.
 pub fn uniform_gaps(px: f32) -> Gaps {
     Gaps::new(px, px, px, px)
 }
@@ -100,13 +98,10 @@ pub fn border_def(b: &BorderDef) -> Border {
 // Font weight & style
 // ---------------------------------------------------------------------------
 
-/// Map a cssengine font weight to freya's `FontWeight`.
-/// Both types are newtype wrappers around `u16`.
 pub fn font_weight(w: &Weight) -> FontWeight {
-    FontWeight(w.0)
+    FontWeight(w.0 as i32)
 }
 
-/// Map a cssengine font style to freya's `FontSlant`.
 pub fn font_slant(s: &TextStyle) -> FontSlant {
     match s {
         TextStyle::Normal => FontSlant::Normal,

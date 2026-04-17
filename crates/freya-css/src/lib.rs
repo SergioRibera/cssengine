@@ -1,14 +1,13 @@
 //! # freya-css
 //!
-//! CSS styling integration for the [Freya](https://freyaui.dev/) UI framework,
+//! Global CSS styling for the [Freya](https://freyaui.dev/) UI framework,
 //! powered by [`cssengine`].
 //!
 //! ## Quick start
 //!
 //! ```rust,ignore
-//! use dioxus::prelude::*;
 //! use freya::prelude::*;
-//! use freya_css::{use_css_theme, CssClassExt};
+//! use freya_css::{init, CssClassExt};
 //!
 //! const CSS: &str = r#"
 //!     .card {
@@ -23,8 +22,12 @@
 //!     }
 //! "#;
 //!
+//! fn main() {
+//!     init(CSS);
+//!     launch(app);
+//! }
+//!
 //! fn app() -> Element {
-//!     let _ = use_css_theme(CSS);
 //!     rsx! {
 //!         rect { width: "100%", height: "100%",
 //!             {card_component()}
@@ -43,18 +46,16 @@
 //!
 //! ## Hot-reload
 //!
-//! Replace [`use_css_theme`] with [`use_css_theme_file`] to watch a file on
-//! disk and automatically re-apply styles when it changes:
-//!
 //! ```rust,ignore
-//! let _ = use_css_theme_file("assets/style.css");
+//! fn main() {
+//!     freya_css::watch("assets/style.css");
+//!     launch(app);
+//! }
 //! ```
 
-mod context;
 pub mod convert;
 mod ext;
-mod hooks;
+mod theme;
 
-pub use context::CssTheme;
 pub use ext::CssClassExt;
-pub use hooks::{use_css_theme, use_css_theme_file};
+pub use theme::{init, watch};
