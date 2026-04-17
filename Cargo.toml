@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "crates/freya-css"]
+resolver = "2"
+
 [package]
 name = "cssengine"
 authors = ["Sergio Ribera <sergioribera@rustlang-es.org>"]
