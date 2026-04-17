@@ -8,7 +8,11 @@ pub mod error;
 pub use animation::*;
 pub use declaration::Declaration;
 pub use error::ParseError;
-pub use parser::PseudoClass;
+pub use parser::{
+    ColorScheme, FontFace, FontSource, Keyframes, KeyframeStop,
+    MediaContext, MediaFeature, MediaQuery, MediaRule, Orientation,
+    PseudoClass, Span, SyntaxError,
+};
 pub use style::StyleSheet;
 
 pub(crate) use parser::*;

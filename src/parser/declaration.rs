@@ -7,8 +7,10 @@ use taffy::{AlignContent, AlignItems, Display, FlexDirection, FlexWrap, JustifyC
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BorderDef, BoxShadow, CursorIcon, Px, PxPct, PxPctAuto, TextOverflow, TextStyle, Transition,
-    Weight,
+    BackgroundImage, BackgroundRepeat, BackgroundSize, BorderDef, BoxShadow, BoxSizing,
+    CursorIcon, Filter, GridPlacement, ObjectFit, OverflowAxes, OverflowAxis, PointerEvents, Px,
+    PxPct, PxPctAuto, TextAlign, TextDecoration, TextTransform, TextOverflow, TextStyle,
+    TrackList, Transform, Transition, Visibility, Weight, WhiteSpace, WordBreak,
 };
 
 macro_rules! gen_declaration {
@@ -95,4 +97,37 @@ gen_declaration! {
     "gap" => parse_gap Gap (PxPct, Option<PxPct>);
     "transition" => parse_transition Transition (String, Transition);
     "user-select" => parse_user_select UserSelect bool;
+    // --- CSS3: Visibility & interaction ---
+    "opacity" => parse_f32 Opacity f32;
+    "visibility" => parse_visibility Visibility Visibility;
+    "pointer-events" => parse_pointer_events PointerEvents PointerEvents;
+    // --- CSS3: Overflow ---
+    "overflow" => parse_overflow_shorthand Overflow OverflowAxes;
+    "overflow-x" => parse_overflow_axis OverflowX OverflowAxis;
+    "overflow-y" => parse_overflow_axis OverflowY OverflowAxis;
+    // --- CSS3: Text ---
+    "text-align" => parse_text_align TextAlign TextAlign;
+    "text-decoration" => parse_text_decoration TextDecoration TextDecoration;
+    "text-transform" => parse_text_transform TextTransform TextTransform;
+    "white-space" => parse_white_space WhiteSpace WhiteSpace;
+    "word-break" => parse_word_break WordBreak WordBreak;
+    "letter-spacing" => parse_px LetterSpacing Px;
+    "word-spacing" => parse_px WordSpacing Px;
+    // --- CSS3: Transform & Filter ---
+    "transform" => parse_transform Transform Transform;
+    "filter" => parse_filter Filter Filter;
+    "backdrop-filter" => parse_filter BackdropFilter Filter;
+    // --- CSS3: Background ---
+    "background-image" => parse_background_image BackgroundImage BackgroundImage;
+    "background-size" => parse_background_size BackgroundSize BackgroundSize;
+    "background-position" => parse_background_position BackgroundPosition (PxPct, PxPct);
+    "background-repeat" => parse_background_repeat BackgroundRepeat BackgroundRepeat;
+    // --- CSS3: Box model ---
+    "box-sizing" => parse_box_sizing BoxSizing BoxSizing;
+    "object-fit" => parse_object_fit ObjectFit ObjectFit;
+    // --- CSS Grid ---
+    "grid-template-columns" => parse_track_list GridTemplateColumns TrackList;
+    "grid-template-rows" => parse_track_list GridTemplateRows TrackList;
+    "grid-column" => parse_grid_line GridColumn GridPlacement;
+    "grid-row" => parse_grid_line GridRow GridPlacement;
 }

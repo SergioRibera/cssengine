@@ -1,11 +1,17 @@
 use super::lexer::Token;
 
 #[derive(Debug)]
-pub struct SyntaxError<'a> {
+pub struct Span {
     pub line: usize,
-    pub column: usize,
+    pub col: usize,
+}
+
+#[derive(Debug)]
+pub struct SyntaxError<'a> {
+    pub span: Span,
     pub error: &'static str,
     pub value: &'a str,
+    pub hint: Option<&'static str>,
 }
 
 impl std::fmt::Display for SyntaxError<'_> {
@@ -13,123 +19,125 @@ impl std::fmt::Display for SyntaxError<'_> {
         write!(
             f,
             "error: {}\n {}:{} | {}",
-            self.error, self.line, self.column, self.value
-        )
+            self.error, self.span.line, self.span.col, self.value
+        )?;
+        if let Some(hint) = self.hint {
+            write!(f, "\n  hint: {hint}")?;
+        }
+        Ok(())
     }
 }
 
-fn find_line_with_value<'a>(lines: &[&'a str], line: usize, m: &str) -> (usize, &'a str) {
-    let line = lines[line - 1];
-    let col = line
-        .find(m)
-        .unwrap_or_else(|| panic!("Analyzer error: cant find column for {m}"));
-    (col, line)
+fn eof_error(error: &'static str) -> SyntaxError<'static> {
+    SyntaxError {
+        span: Span { line: 0, col: 0 },
+        error,
+        value: "<EOF>",
+        hint: None,
+    }
 }
 
-/// Work in progress
+/// Validates the token stream for basic syntax correctness.
+/// Returns a (possibly empty) list of syntax errors found.
+/// On error, attempts to recover and continue rather than stopping.
 #[must_use]
-pub fn analyze_tokens<'a>(tokens: &[Token<'a>], input: &'a str) -> Vec<SyntaxError<'a>> {
-    let mut errors: Vec<SyntaxError> = Vec::with_capacity(tokens.len());
-    let mut tokens = tokens.iter().peekable();
-    let lines = input.lines().collect::<Vec<_>>();
+pub fn analyze_tokens<'a>(tokens: &[Token<'a>], _input: &'a str) -> Vec<SyntaxError<'a>> {
+    let mut errors: Vec<SyntaxError> = Vec::new();
+    let mut iter = tokens.iter().peekable();
+
     loop {
-        let Some(token) = tokens.next() else {
+        let Some(token) = iter.next() else {
             break;
         };
 
         match token {
-            Token::Selector { line, value } => {
-                let line = *line;
-                let (column, value) = find_line_with_value(&lines, line, value);
-                if let Some(peek) = tokens.peek() {
-                    if !matches!(peek, Token::BlockOpen { .. } | Token::Selector { .. }) {
-                        let error = SyntaxError {
-                            line,
-                            column,
-                            error: "Expecting { after selector",
+            Token::Selector { line, col, value } => {
+                match iter.peek() {
+                    None => {
+                        errors.push(SyntaxError {
+                            span: Span { line: *line, col: *col },
+                            error: "Unexpected EOF after selector",
                             value,
-                        };
-                        errors.push(error);
+                            hint: None,
+                        });
                     }
-                } else {
-                    let error = SyntaxError {
-                        line,
-                        column,
-                        error: "Unexpected EOF",
-                        value,
-                    };
-                    errors.push(error);
+                    Some(next) if !matches!(next, Token::BlockOpen { .. } | Token::Selector { .. }) => {
+                        errors.push(SyntaxError {
+                            span: Span { line: *line, col: *col },
+                            error: "Expected { after selector",
+                            value,
+                            hint: None,
+                        });
+                    }
+                    _ => {}
                 }
             }
-            Token::Property { line, value } => {
-                if let Some(peek) = tokens.peek() {
-                    if !matches!(peek, Token::Colon { .. }) {
-                        let line = *line;
-                        let (column, value) = find_line_with_value(&lines, line, value);
-                        let error = SyntaxError {
-                            line,
-                            column,
-                            error: "Unexpected token after property",
-                            value,
-                        };
-                        errors.push(error);
+            Token::Property { line, col, value } => {
+                match iter.peek() {
+                    None => {
+                        errors.push(eof_error("Unexpected EOF after property"));
                     }
-                } else {
-                    todo!()
+                    Some(next) if !matches!(next, Token::Colon { .. }) => {
+                        errors.push(SyntaxError {
+                            span: Span { line: *line, col: *col },
+                            error: "Expected : after property name",
+                            value,
+                            hint: None,
+                        });
+                    }
+                    _ => {}
                 }
             }
-            Token::Value { value, line } => {
-                if let Some(peek) = tokens.peek() {
-                    if !matches!(peek, Token::Semicolon { .. }) {
-                        let line = *line;
-                        let (column, value) = find_line_with_value(&lines, line, value);
-                        let error = SyntaxError {
-                            line,
-                            column,
-                            error: "Expecting ; after value",
-                            value,
-                        };
-                        errors.push(error);
+            Token::Value { line, col, value } => {
+                match iter.peek() {
+                    None => {
+                        errors.push(eof_error("Unexpected EOF after value"));
                     }
-                } else {
-                    todo!()
+                    Some(next) if !matches!(next, Token::Semicolon { .. } | Token::BlockClose { .. }) => {
+                        errors.push(SyntaxError {
+                            span: Span { line: *line, col: *col },
+                            error: "Expected ; after value",
+                            value,
+                            hint: None,
+                        });
+                    }
+                    _ => {}
                 }
             }
-            Token::Semicolon { line } => {
-                if let Some(peek) = tokens.peek() {
-                    if !matches!(peek, Token::BlockClose { .. } | Token::Property { .. }) {
-                        let line = *line;
-                        let (column, value) = find_line_with_value(&lines, line, ";");
-                        let error = SyntaxError {
-                            line,
-                            column,
-                            error: "Expecting property or } after ;",
-                            value,
-                        };
-                        errors.push(error);
+            Token::Semicolon { line, col } => {
+                match iter.peek() {
+                    None => {
+                        errors.push(eof_error("Unexpected EOF after ;"));
                     }
-                } else {
-                    todo!()
+                    Some(next) if !matches!(next, Token::BlockClose { .. } | Token::Property { .. }) => {
+                        errors.push(SyntaxError {
+                            span: Span { line: *line, col: *col },
+                            error: "Expected property or } after ;",
+                            value: ";",
+                            hint: None,
+                        });
+                    }
+                    _ => {}
                 }
             }
-            Token::Colon { line } => {
-                if let Some(peek) = tokens.peek() {
-                    if !matches!(peek, Token::Value { .. }) {
-                        let line = *line;
-                        let (column, value) = find_line_with_value(&lines, line, ":");
-                        let error = SyntaxError {
-                            line,
-                            column,
-                            error: "Expecting value after :",
-                            value,
-                        };
-                        errors.push(error);
+            Token::Colon { line, col } => {
+                match iter.peek() {
+                    None => {
+                        errors.push(eof_error("Unexpected EOF after :"));
                     }
-                } else {
-                    todo!()
+                    Some(next) if !matches!(next, Token::Value { .. }) => {
+                        errors.push(SyntaxError {
+                            span: Span { line: *line, col: *col },
+                            error: "Expected value after :",
+                            value: ":",
+                            hint: None,
+                        });
+                    }
+                    _ => {}
                 }
             }
-            _ => (),
+            // AtRule tokens are valid in any position at depth 0 — no validation needed here
+            Token::AtRule { .. } | Token::BlockOpen { .. } | Token::BlockClose { .. } | Token::EOF => {}
         }
     }
 
